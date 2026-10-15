@@ -1,0 +1,93 @@
+name: Bug report
+description: Report a problem with G13 Zombie Control Center
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem with G13 Zombie Control Center.
+
+        For security vulnerabilities, do not use this form. Use the repository's private vulnerability reporting feature instead.
+
+  - type: input
+    id: version
+    attributes:
+      label: Zombie version
+      description: The version of G13 Zombie Control Center you are using.
+      placeholder: "1.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: distro
+    attributes:
+      label: Linux distribution
+      description: Include the distribution and version.
+      placeholder: "Bazzite 44, Fedora 44, Linux Mint 22.3, Debian 13..."
+    validations:
+      required: true
+
+  - type: input
+    id: desktop
+    attributes:
+      label: Desktop and session
+      description: Include the desktop environment and display/session type.
+      placeholder: "KDE/Wayland, XFCE/X11, Cinnamon/X11, Steam Gaming Mode/Gamescope"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Assignments / Commands
+        - Macros
+        - Backlight / LCD
+        - Joystick
+        - Profiles / Application Switching
+        - Onboard Profiles
+        - Gaming Mode
+        - Installation / Update / Uninstall
+        - Driver / Device Detection
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Problem description
+      description: Describe what happened and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: List the steps that reliably reproduce the problem.
+      placeholder: |
+        1. Open...
+        2. Select...
+        3. Press...
+        4. Observe...
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics or logs
+      description: |
+        If useful, include relevant log output or information from a diagnostic report generated under Settings > Developer.
+
+        Do not include passwords, tokens, private keys, or unrelated personal information.
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional information
+      description: Add screenshots or anything else that may help.
