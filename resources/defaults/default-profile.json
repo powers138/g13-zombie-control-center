@@ -1,0 +1,36 @@
+{
+  "name": "Default G13 Profile",
+  "lock_while_running": false,
+  "joystick": {
+    "mode": "mouse",
+    "start_deadzone": 0.35,
+    "stop_deadzone": 0.2,
+    "left_gain": 1.0,
+    "right_gain": 1.0,
+    "up_gain": 1.0,
+    "down_gain": 1.0,
+    "center_alpha": 0.005
+  },
+  "backlight": {
+    "1": [
+      255,
+      255,
+      255
+    ],
+    "2": [
+      255,
+      255,
+      255
+    ],
+    "3": [
+      255,
+      255,
+      255
+    ]
+  },
+  "layers": {
+    "1": {},
+    "2": {},
+    "3": {}
+  }
+}

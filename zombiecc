@@ -1,0 +1,158 @@
+#!/usr/bin/env bash
+# Host-side launcher for G13 Zombie Control Center.
+# The independent driver service is not started or stopped here.
+set -euo pipefail
+
+# Keep the original stderr available for preflight errors.
+exec 3>&2
+LOG_READY=0
+
+fail() {
+    printf 'zombiecc: %s\n' "$*" >&3
+    if (( LOG_READY )); then
+        printf 'zombiecc: %s\n' "$*" >&2
+        printf 'Launch log: %s\n' "$LOG_FILE" >&3
+    fi
+    exit 1
+}
+
+if [[ -n "${CONTAINER_ID:-}" || -e /run/.containerenv || -e /.dockerenv ]]; then
+    fail "Run this launcher on the host, not inside Distrobox."
+fi
+
+if (( EUID == 0 )); then
+    fail "Run this launcher as your normal user, without sudo."
+fi
+
+if [[ "${HOME:-}" != /* ]]; then
+    fail "HOME must be an absolute path."
+fi
+
+xdg_home() {
+    local value="$1"
+    local fallback="$2"
+
+    # Unset, empty, or relative XDG paths use the standard fallback.
+    if [[ "$value" == /* ]]; then
+        printf '%s\n' "$value"
+    else
+        printf '%s\n' "$fallback"
+    fi
+}
+
+XDG_DATA_HOME="$(xdg_home "${XDG_DATA_HOME:-}" "$HOME/.local/share")"
+XDG_CONFIG_HOME="$(xdg_home "${XDG_CONFIG_HOME:-}" "$HOME/.config")"
+XDG_STATE_HOME="$(xdg_home "${XDG_STATE_HOME:-}" "$HOME/.local/state")"
+export XDG_DATA_HOME XDG_CONFIG_HOME XDG_STATE_HOME
+
+# These optional overrides are for development/testing only.
+APP_DIR="${ZOMBIECC_APP_DIR:-$XDG_DATA_HOME/zombiecc/app}"
+CONTAINER_NAME="${ZOMBIECC_CONTAINER:-zombiecc}"
+PYTHON_BIN="${ZOMBIECC_PYTHON:-$APP_DIR/.venv/bin/python}"
+
+[[ "$APP_DIR" == /* ]] || fail "ZOMBIECC_APP_DIR must be an absolute path."
+[[ "$PYTHON_BIN" == /* ]] || fail "ZOMBIECC_PYTHON must be an absolute path."
+
+if [[ ! "$CONTAINER_NAME" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]*$ ]]; then
+    fail "Invalid container name: $CONTAINER_NAME"
+fi
+
+LOG_DIR="$XDG_STATE_HOME/zombiecc/logs"
+LOG_FILE="$LOG_DIR/editor-launch.log"
+
+umask 077
+mkdir -p -- "$LOG_DIR" || fail "Cannot create log directory: $LOG_DIR"
+
+# Keep the latest launch output without adding a background logging process.
+if ! exec > "$LOG_FILE" 2>&1; then
+    fail "Cannot open launch log: $LOG_FILE"
+fi
+LOG_READY=1
+
+if [[ -t 3 ]]; then
+    printf 'Zombie editor launch log: %s\n' "$LOG_FILE" >&3
+fi
+
+printf 'G13 Zombie Control Center editor launch: %s\n' "$(date -Is)"
+printf 'Application: %s\n' "$APP_DIR"
+printf 'Container: %s\n' "$CONTAINER_NAME"
+printf 'Runtime Python: %s\n' "$PYTHON_BIN"
+printf 'Desktop: %s\n' "${XDG_CURRENT_DESKTOP:-not set}"
+printf 'DISPLAY: %s\n' "${DISPLAY:-not set}"
+printf 'WAYLAND_DISPLAY: %s\n' "${WAYLAND_DISPLAY:-not set}"
+
+DISTROBOX_BIN="$(command -v distrobox)" || fail "Distrobox was not found in PATH."
+PODMAN_BIN="$(command -v podman)" || fail "Podman was not found in PATH."
+
+[[ -f "$APP_DIR/editor.py" && -r "$APP_DIR/editor.py" ]] \
+    || fail "Editor was not found or is unreadable: $APP_DIR/editor.py"
+
+# Use the same container engine for preflight checks and the actual launch.
+export DBX_CONTAINER_MANAGER=podman
+
+if "$PODMAN_BIN" container exists "$CONTAINER_NAME"; then
+    :
+else
+    status=$?
+    if (( status == 1 )); then
+        fail "Container '$CONTAINER_NAME' is not installed."
+    fi
+    fail "Podman could not check the container (exit $status). See the launch log."
+fi
+
+CONTAINER_MANAGER="$(
+    "$PODMAN_BIN" container inspect \
+        --format '{{index .Config.Labels "manager"}}' \
+        "$CONTAINER_NAME"
+)" || fail "Cannot inspect container '$CONTAINER_NAME'."
+
+[[ "$CONTAINER_MANAGER" == distrobox ]] \
+    || fail "Container '$CONTAINER_NAME' is not managed by Distrobox."
+
+cd -- "$APP_DIR" || fail "Cannot enter application directory: $APP_DIR"
+
+# Paths are arguments, never interpolated into shell code.
+# Validate the interpreter INSIDE the container: its symlink target may
+# exist there but not on the host. Do not execute the host's Python.
+# Keep the launch attached; no nohup, disown, or background process.
+exec "$DISTROBOX_BIN" enter \
+    --name "$CONTAINER_NAME" \
+    --no-tty \
+    -- /bin/bash -lc '
+        set -euo pipefail
+
+        app_dir="$1"
+        python_bin="$2"
+        export XDG_DATA_HOME="$3"
+        export XDG_CONFIG_HOME="$4"
+        export XDG_STATE_HOME="$5"
+        shift 5
+
+        # Apply after login-shell startup so user Python settings cannot win.
+        unset PYTHONHOME PYTHONPATH
+        export PYTHONNOUSERSITE=1
+
+        # Make host cursor themes available to Qt inside Distrobox.
+        export XCURSOR_PATH="$HOME/.icons:$HOME/.local/share/icons:/run/host/usr/share/icons:/usr/share/icons${XCURSOR_PATH:+:$XCURSOR_PATH}"
+
+        if [[ ! -f "$app_dir/editor.py" || ! -r "$app_dir/editor.py" ]]; then
+            printf "zombiecc: Editor is unavailable inside the container: %s\n" \
+                "$app_dir/editor.py" >&2
+            exit 1
+        fi
+
+        if [[ ! -f "$python_bin" || ! -x "$python_bin" ]]; then
+            printf "zombiecc: Runtime Python is missing or not executable: %s\n" \
+                "$python_bin" >&2
+            exit 1
+        fi
+
+        cd -- "$app_dir"
+        exec "$python_bin" -u "$app_dir/editor.py" "$@"
+    ' zombiecc \
+    "$APP_DIR" \
+    "$PYTHON_BIN" \
+    "$XDG_DATA_HOME" \
+    "$XDG_CONFIG_HOME" \
+    "$XDG_STATE_HOME" \
+    "$@" 3>&-

@@ -1,0 +1,15 @@
+dbus-libs
+hidapi
+kdotool
+libglvnd-egl
+libglvnd-glx
+libwayland-cursor
+libxkbcommon
+libxkbcommon-x11
+python3-evdev
+python3-gobject
+python3-pip
+xcb-util-cursor
+xcb-util-keysyms
+xcb-util-wm
+xprop

@@ -1,0 +1,11 @@
+{
+  "active_profile": "default.json",
+  "automatic_profile_switching": false,
+  "application_rules": [],
+  "locked_profile": null,
+  "record_macro_delays": true,
+  "show_macro_recording_on_lcd": true,
+  "show_profile_activation_on_lcd": false,
+  "verify_onboard_writes": false,
+  "editor_theme": "classic"
+}
