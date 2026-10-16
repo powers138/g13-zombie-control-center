@@ -8,6 +8,24 @@ backlighting, LCD support, joystick configuration, application-based
 profile switching, onboard profile storage, Logitech profile
 interoperability, Lua scripting, and diagnostic tools.
 
+# Screenshots
+
+## Assignments
+
+<img src="docs/images/assignments.png" alt="Assignments page" width="1000">
+
+## Backlight & LCD
+
+<img src="docs/images/backlight-lcd.png" alt="Backlight and LCD page" width="1000">
+
+## Joystick
+
+<img src="docs/images/joystick.png" alt="Joystick configuration page" width="1000">
+
+## Profiles & Applications
+
+<img src="docs/images/profiles-applications.png" alt="Profiles and Applications page" width="1000">
+
 # Features
 - Profile-specific G-key assignments
 - Reusable command library
